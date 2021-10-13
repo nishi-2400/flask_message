@@ -10,5 +10,20 @@ h1 {
 }
 
 p {
-  font-size: 14px;
+  font-size: 14pt;
+}
+
+div.logout {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  font-weight: bold;
+  font-size: 12pt;
+}
+
+div.footer {
+  text-align: right;
+  border-bottom: 1px solid lightskyblue;
+  color: lightskyblue;
+  margin: 50px 0px;
 }
