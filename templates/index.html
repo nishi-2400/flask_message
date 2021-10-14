@@ -1,44 +1,21 @@
-<!DOCTYPE html>
-<html lang="ja">
-  <head>
-    <title>Index</title>
-    <meta charset="utf-8" />
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='style.css') }}"
-    />
-  </head>
-  <body>
-    <h1>{{ title }}</h1>
-    {% if flg %}
-    <p style="background-color: red; font-weight: bold;">警告！</p>
-    {% else %}
-    <p style="background-color: lightblue;">Information</p>
-    {% endif %}
-    <p>{{ msg }}</p>
-    <div>
-      <form method="post" action="/">
-        <div>
-          <input type="checkbox" name="check" id="ck1" />
-          <label for="ck1">CheckBox</label>
-        </div>
-        <div>
-          <input type="radio" name="radio" id="r1" value="A" />
-          <label for="r1">radio 1</label>
-        </div>
-        <div>
-          <input type="radio" name="radio" id="r2" value="B" />
-          <label for="r2">radio 2</label>
-        </div>
-        <div>
-          <select name="sel" multiple>
-            <option>Orange</option>
-            <option>Grape</option>
-            <option>Lemon</option>
-          </select>
-        </div>
-        <button type="submit">Submit</button>
-      </form>
-    </div>
-  </body>
-</html>
+{% extends "layout.html" %} {% block title %} Login {% endblock %} {% block
+headline %} {{ title }} {% endblock %} {% block content %}
+<div class="mb-3" id="msg">{{ message }}</div>
+
+<!-- Vue.js container-->
+{% raw %}
+<div id="app" class="m-5">
+  <h2>{{ vue_msg }}</h2>
+</div>
+{% endraw %}
+
+<!-- Vue.js script -->
+<script>
+  new Vue({
+    el: "#app",
+    data: {
+      vue_msg: "This is Vue.js"
+    }
+  });
+</script>
+{% endblock %}

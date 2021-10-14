@@ -12,13 +12,15 @@ message_data = []
 
 @app.route('/', methods=['GET'])
 def index():
-    # グローバル変数
-    global message_data
-    if 'login' in session and session['login']:
-        msg = 'Login id: ' + session['id']
-        return render_template('message.html', title='Messages', messages=msg, data=message_data)
-    else:
-        return redirect('/login')
+    return render_template('index.html', title="Index", message="*Vue.js")
+# def index():
+#     # グローバル変数
+#     global message_data
+#     if 'login' in session and session['login']:
+#         msg = 'Login id: ' + session['id']
+#         return render_template('message.html', title='Messages', messages=msg, data=message_data)
+#     else:
+#         return redirect('/login')
 
 
 @app.route('/', methods=['POST'])
