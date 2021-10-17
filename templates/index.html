@@ -5,12 +5,36 @@ headline %} {{ title }} {% endblock %} {% block content %}
 <!-- Vue.js container-->
 {% raw %}
 <div id="app" class="m-5">
-  <h2>{{ vue_msg }}</h2>
+  <mycomp name="hanako" f="false" msg="This is my first message" />
 </div>
+{% endraw %} {% raw %}
+<script type="text/x-template" id="mycomp-template">
+  <div>
+    <div v-if="flg=='true'" class="alert alert-primary">
+      <p class="alert alert-primary h5">
+        {{ name }}
+      </p>
+      <p>{{ msg }}</p>
+    </div>
+    <div v-else class="alert alert-danger">
+      <p class="h6">
+          I'm not {{ name }}
+      </p>
+    </div>
+  </div>
+</script>
 {% endraw %}
 
 <!-- Vue.js script -->
 <script>
+  Vue.component("mycomp", {
+    template: "#mycomp-template",
+    props: ["name", "msg", "f"],
+    data: function() {
+      return { flg: this.f.toLowerCase() };
+    }
+  });
+
   new Vue({
     el: "#app",
     data: {
