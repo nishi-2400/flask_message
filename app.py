@@ -1,98 +1,159 @@
-from flask import Flask, render_template, request, session, redirect, jsonify
-import pickle
+from flask import Flask, render_template, request, session, redirect, jsonify, g, current_app
+import sqlite3
+import json
+from datetime import datetime
+
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.orm.exc import NoResultFound
+
+import qrcode as qr
+from PIL import Image
+import base64
+from io import BytesIO
 from pprint import pprint
 
 app = Flask(__name__)
-
-# byte型でシークレットキーを格納: SESSION利用のための手続き
-app.secret_key = b'radam string...'
-
-member_data = {}
-message_data = []
-
-member_data_file = 'member_data.dat'
-message_data_file = 'message_data.dat'
-
-# load member file
-try:
-    with open(member_data_file, "rb") as f:
-        list = pickle.load(f)
-        if list != None:
-            member_data = list
-except:
-    pass
-
-# load message file
-try:
-    with open(message_data_file, "rb") as f:
-        list = pickle.load(f)
-        if list != None:
-            message_data = list
-except:
-    pass
+app.secret_key = b'random string...for session'
+engine = create_engine('sqlite:///flask_message.sqlite3')
 
 
+def get_qrdata(s):
+    qr_img = qr.make(s)
+    byte_buf = BytesIO()
+    qr_img.save(byte_buf, format="png")
+    qr_data = byte_buf.getvalue()
+    b64_data = 'data:image/png;base64,' + \
+        base64.b64encode(qr_data).decode("utf-8")
+    return b64_data
+
+
+Base = declarative_base()
+
+
+class User(Base):
+    __tablename__ = 'users'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255))
+    password = Column(String(255))
+
+    def to_dict(self):
+        return {
+            'id': int(self.id),
+            'name': str(self.name),
+            'password': str(self.password)
+        }
+
+
+class Message(Base):
+    __tablename__ = 'messages'
+    id = Column(Integer, primary_key=True)
+    users_id = Column(Integer(), ForeignKey('users.id'))
+    message = Column(String(255))
+    created = Column(DateTime())
+
+    user = relationship('User')
+
+    def to_dict(self):
+        return {
+            'id': int(self.id),
+            'users_id': int(self.users_id),
+            'message': str(self.message),
+            'created': str(self.created),
+            'user': str(self.user.name)
+        }
+
+
+def get_by_list(arr):
+    res = []
+    for item in arr:
+        res.append(item.to_dict())
+    return res
+
+
+def get_db():
+    if 'db' not in g:
+        g.db = sqlite3.connect('flask_message.sqlite3')
+    return g.db
+
+
+def close_db():
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
+
+
+# route
 @app.route('/', methods=['GET'])
 def index():
-    global message_data
-    return render_template('message.html', login=False, title="Messages", message="not logined", data="message_data")
-
-
-@app.route('/post', methods=['POST'])
-def posMsg():
-    global message_data
-    id = request.form.get('id')
-    msg = request.form.get('comment')
-    message_data.append((id, msg))
-
-    # 25件以上でメッセージ削除
-    if len(message_data) > 25:
-        message_data.pop(0)
-
-    try:
-        with open(message_data_file, 'wb') as f:
-            # ファイルにオブジェクトを保存する
-            pickle.dump(message_data, f)
-    except:
-        pass
-    return 'True'
+    return render_template('message.html', login=False, title="Messages", message="not logined", data=[])
 
 
 @app.route('/messages', methods=['GET'])
-def getMsg():
-    global message_data
-    return jsonify(message_data)
+def get_msg():
+    Session = sessionmaker(bind=engine)
+    ses = Session()
+    re = ses.query(Message).join(User).order_by(Message.created.desc())[:10]
+    msgs = get_by_list(re)
+    return jsonify(msgs)
+
+
+@app.route('/post', methods=['POST'])
+def post_msg():
+    id = request.form.get('id')
+    msg = request.form.get('message')
+    created = datetime.now()
+    Session = sessionmaker(bind=engine)
+    ses = Session()
+
+    msg_obj = Message(users_id=id, message=msg, created=created)
+    ses.add(msg_obj)
+    ses.commit()
+    ses.close()
+    return 'True'
+
+
+@app.route('/qr', methods=['POST'])
+def get_qr():
+    id = request.form.get('id')
+    Session = sessionmaker(bind=engine)
+    ses = Session()
+    re = ses.query(Message).filter(Message.id == id).one()
+    dic = re.to_dict()
+    dic['qr'] = get_qrdata(re.message)
+    return jsonify(dic)
 
 
 @app.route('/login', methods=['POST'])
 def login_post():
-    global member_data, message_data
-    id = request.form.get('id')
-    pswd = request.form.get('pass')
-    if id in member_data:
-        if pswd == member_data[id]:
-            flg = 'True'
+    name = request.form.get('name')
+    pswd = request.form.get('password')
+    Session = sessionmaker(bind=engine)
+    ses = Session()
+    n = ses.query(User).filter(User.name == name).count()
+    if n == 0:
+        usr = User(name=name, password=pswd)
+        ses.add(usr)
+        ses.commit()
+        flg = str(usr.id)
+    else:
+        usr = ses.query(User).filter(User.name == name).one()
+        if pswd == usr.password:
+            flg = str(usr.id)
         else:
             flg = 'False'
-    else:
-        member_data[id] = pswd
-        flg = 'True'
-
-        try:
-            with open(member_data_file, 'wb') as f:
-                pickle.dump(member_data, f)
-        except:
-            pass
+    ses.close()
     return flg
 
 
-@app.route('/', methods=['POST'])
-def form():
-    msg = request.form.get('comment')
-    message_data.append((session['id'], msg))
-    if len(message_data) > 25:
-        message_data.pop(0)
-    return redirect('/')
+@app.route('/ajax', methods=['GET'])
+def ajax():
+    db = get_db()
+    cur = db.execute("select * from mydata")
+    mydata = cur.fetchall()
+    pprint(mydata)
+    return jsonify(mydata)
 
 
 @app.route('/login', methods=['GET'])

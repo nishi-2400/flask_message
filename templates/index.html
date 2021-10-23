@@ -4,23 +4,33 @@ headline %} {{ title }} {% endblock %} {% block content %}
 
 <!-- Vue.js container-->
 {% raw %}
-<div id="app" class="m-5">
-  <mycomp name="hanako" f="false" msg="This is my first message" />
+<div id="app" class="m-3">
+  <mycomp />
 </div>
 {% endraw %} {% raw %}
 <script type="text/x-template" id="mycomp-template">
   <div>
-    <div v-if="flg=='true'" class="alert alert-primary">
-      <p class="alert alert-primary h5">
-        {{ name }}
-      </p>
-      <p>{{ msg }}</p>
+    <div class="alert alert-info">
+      <h5>{{ alert }}</h5>
     </div>
-    <div v-else class="alert alert-danger">
-      <p class="h6">
-          I'm not {{ name }}
-      </p>
-    </div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Mail</th>
+          <th>Age</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="item in data">
+          <td>{{ item[0] }}</td>
+          <td>{{ item[1] }}</td>
+          <td>{{ item[2] }}</td>
+          <td>{{ item[3] }}</td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </script>
 {% endraw %}
@@ -31,7 +41,21 @@ headline %} {{ title }} {% endblock %} {% block content %}
     template: "#mycomp-template",
     props: ["name", "msg", "f"],
     data: function() {
-      return { flg: this.f.toLowerCase() };
+      return {
+        alert: "This is SQLite3 Database samaple",
+        data: [(-1, "wait....", "", "")]
+      };
+    },
+    methods: {
+      getdata: function() {
+        let self = this;
+        $.get("/ajax", function(data) {
+          self.data = eval(data);
+        });
+      }
+    },
+    created: function() {
+      this.getdata();
     }
   });
 
